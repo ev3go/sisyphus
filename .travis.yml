@@ -1,0 +1,14 @@
+language: go
+go:
+ - 1.7
+  
+install:
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+
+script:
+  - go get -d -t -v ./...
+  - go build -x -v ./...
+  - go test -a -x -v ./...
+  - diff <(gofmt -d .) <("")
+  - if [[ $TRAVIS_SECURE_ENV_VARS = "true" ]]; then bash .travis/test-coverage.sh; fi
