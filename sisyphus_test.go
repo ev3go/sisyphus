@@ -92,6 +92,7 @@ func sysfs(t *testing.T, comm chan string) *FileSystem {
 		),
 		d("dev", 0775).With(
 			rw("foo", 0666, NewBytes([]byte("with data already here"))),
+			rw("bar", 0666, NewBytes([]byte("with data already here again"))),
 			d("input", 0775).With(
 				d("by-path", 0775).With(
 					ro("platform-gpio-keys.0-event", 0666,
@@ -160,9 +161,12 @@ func TestFileSystem(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error opening ro file: %v", err)
 		}
+		defer f.Close()
 		var buf bytes.Buffer
-		io.Copy(&buf, f)
-		f.Close()
+		_, err = io.Copy(&buf, f)
+		if err != nil {
+			t.Fatalf("unexpected error copying buffer: %v", err)
+		}
 		got := buf.String()
 		want := "constant data\n"
 		if got != want {
@@ -175,9 +179,12 @@ func TestFileSystem(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error opening ro file: %v", err)
 		}
+		defer f.Close()
 		var buf bytes.Buffer
-		io.Copy(&buf, iotest.OneByteReader(f))
-		f.Close()
+		_, err = io.Copy(&buf, iotest.OneByteReader(f))
+		if err != nil {
+			t.Fatalf("unexpected error copying buffer: %v", err)
+		}
 		got := buf.String()
 		want := "constant data\n"
 		if got != want {
@@ -186,38 +193,70 @@ func TestFileSystem(t *testing.T) {
 	})
 
 	t.Run("read write", func(t *testing.T) {
-		f, err := os.OpenFile(filepath.Join(prefix, "dev/foo"), os.O_RDWR|os.O_CREATE, 0666)
+		f, err := os.OpenFile(filepath.Join(prefix, "dev/foo"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			t.Fatalf("unexpected error opening rw buffer: %v", err)
 		}
+		defer f.Close()
 		_, err = f.Write([]byte("... more\n"))
 		if err != nil {
 			t.Fatalf("unexpected error writing to rw buffer: %v", err)
 		}
-		f.Seek(0, 0)
+		_, err = f.Seek(0, io.SeekStart)
+		if err != nil {
+			t.Fatalf("unexpected error seeking to start: %v", err)
+		}
 		var buf bytes.Buffer
-		io.Copy(&buf, f)
-		f.Close()
+		_, err = io.Copy(&buf, f)
+		if err != nil {
+			t.Fatalf("unexpected error copying buffer: %v", err)
+		}
 		got := buf.String()
 		want := "with data already here... more\n"
 		if got != want {
 			t.Errorf("expected file contents:\ngot: %q\nwant:%q", got, want)
 		}
+
+		err = f.Truncate(0)
+		if err != nil {
+			t.Fatalf("unexpected error truncating rw buffer: %v", err)
+		}
+		newWant := "replacement data\n"
+		_, err = f.Write([]byte(newWant))
+		if err != nil {
+			t.Fatalf("unexpected error writing to rw buffer: %v", err)
+		}
+		buf.Reset()
+		_, err = f.Seek(0, io.SeekStart)
+		if err != nil {
+			t.Fatalf("unexpected error seeking to start: %v", err)
+		}
+		_, err = io.Copy(&buf, f)
+		if err != nil {
+			t.Fatalf("unexpected error copying buffer: %v", err)
+		}
+		newGot := buf.String()
+		if newGot != newWant {
+			t.Errorf("expected file contents:\ngot: %q\nwant:%q", newGot, newWant)
+		}
 	})
 
 	t.Run("truncate read write", func(t *testing.T) {
-		f, err := os.OpenFile(filepath.Join(prefix, "dev/foo"), os.O_RDWR|os.O_CREATE, 0666)
+		f, err := os.OpenFile(filepath.Join(prefix, "dev/bar"), os.O_RDWR|os.O_CREATE, 0666)
 		if err != nil {
 			t.Fatalf("unexpected error opening rw buffer: %v", err)
 		}
+		defer f.Close()
 		err = f.Truncate(int64(len("with data already")))
 		if err != nil {
 			t.Errorf("unexpected error truncating rw buffer: %v", err)
 		}
 
 		var buf bytes.Buffer
-		io.Copy(&buf, f)
-		f.Close()
+		_, err = io.Copy(&buf, f)
+		if err != nil {
+			t.Fatalf("unexpected error copying buffer: %v", err)
+		}
 		got := buf.String()
 		want := "with data already"
 		if got != want {

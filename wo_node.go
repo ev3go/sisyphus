@@ -135,12 +135,6 @@ func (f *WO) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Write
 	f.mtime = f.fs.now()
 
 	var err error
-	if req.FileFlags&fuse.OpenTruncate != 0 {
-		err = f.dev.Truncate(req.Offset)
-		if err != nil {
-			return err
-		}
-	}
 	resp.Size, err = f.dev.WriteAt(req.Data, req.Offset)
 	return err
 }
@@ -169,8 +163,13 @@ func (f *WO) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.S
 		if err != nil {
 			return err
 		}
+		size, err := f.dev.Size()
+		if err != nil {
+			return err
+		}
+		resp.Attr.Size = uint64(size)
 	}
-	setAttr(&f.attr, req)
+	setAttr(&f.attr, resp, req)
 
 	return nil
 }

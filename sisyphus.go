@@ -93,13 +93,23 @@ func (f *Bytes) Truncate(n int64) error {
 	if n < 0 || n > int64(len(*f)) {
 		return syscall.EINVAL
 	}
+	tail := (*f)[n:cap(*f)]
+	for i := range tail {
+		tail[i] = 0
+	}
 	(*f) = (*f)[:n]
 	return nil
 }
 
 // WriteAt satisfies the io.WriterAt interface.
 func (f *Bytes) WriteAt(b []byte, off int64) (int, error) {
-	(*f) = append((*f)[off:], b...)
+	if off >= int64(cap(*f)) {
+		t := make([]byte, off+int64(len(b)))
+		copy(t, *f)
+		*f = t
+	}
+	*f = (*f)[:off]
+	*f = append(*f, b...)
 	return len(b), nil
 }
 
@@ -165,20 +175,25 @@ func copyAttr(dst *fuse.Attr, src attr) {
 }
 
 // setAttr copies node attributes from a *fuse.SetattrRequest.
-func setAttr(dst *attr, src *fuse.SetattrRequest) {
+func setAttr(dst *attr, resp *fuse.SetattrResponse, src *fuse.SetattrRequest) {
 	if src.Valid&fuse.SetattrMode != 0 {
+		resp.Attr.Mode = src.Mode
 		dst.mode = src.Mode
 	}
 	if src.Valid&fuse.SetattrUid != 0 {
+		resp.Attr.Uid = src.Uid
 		dst.uid = src.Uid
 	}
 	if src.Valid&fuse.SetattrGid != 0 {
+		resp.Attr.Gid = src.Gid
 		dst.gid = src.Gid
 	}
 	if src.Valid&fuse.SetattrAtime != 0 {
+		resp.Attr.Atime = src.Atime
 		dst.atime = src.Atime
 	}
 	if src.Valid&fuse.SetattrMtime != 0 {
+		resp.Attr.Mtime = src.Mtime
 		dst.mtime = src.Mtime
 	}
 }
