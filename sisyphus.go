@@ -97,7 +97,7 @@ func (f *Bytes) Truncate(n int64) error {
 	for i := range tail {
 		tail[i] = 0
 	}
-	(*f) = (*f)[:n]
+	*f = (*f)[:n]
 	return nil
 }
 
