@@ -7,6 +7,8 @@ package sisyphus
 import (
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -48,14 +50,27 @@ var (
 )
 
 // NewWO returns a new WO file with the given name and file mode.
-func NewWO(name string, mode os.FileMode, dev Writer) *WO {
+func NewWO(name string, mode os.FileMode, dev Writer) (*WO, error) {
+	if strings.Contains(name, string(filepath.Separator)) {
+		return nil, ErrBadName
+	}
 	return &WO{
 		name: name,
 		attr: attr{
 			mode: mode &^ (os.ModeDir | 0444),
 		},
 		dev: dev,
+	}, nil
+}
+
+// MustNewWO returns a new RO with the given name and file mode. It
+// will panic if name contains a filepath separator.
+func MustNewWO(name string, mode os.FileMode, dev Writer) *WO {
+	wo, err := NewWO(name, mode, dev)
+	if err != nil {
+		panic(err)
 	}
+	return wo
 }
 
 // Own sets the uid and gid of the file.

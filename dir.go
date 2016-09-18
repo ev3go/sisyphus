@@ -6,6 +6,8 @@ package sisyphus
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,14 +36,27 @@ var (
 )
 
 // NewDir returns a new Dir with the given name and file mode.
-func NewDir(name string, mode os.FileMode) *Dir {
+func NewDir(name string, mode os.FileMode) (*Dir, error) {
+	if name != "/" && strings.Contains(name, string(filepath.Separator)) {
+		return nil, ErrBadName
+	}
 	return &Dir{
 		name: name,
 		attr: attr{
 			mode: os.ModeDir | mode&^(os.ModeSymlink|os.ModeNamedPipe|os.ModeSocket),
 		},
 		files: make(map[string]Node),
+	}, nil
+}
+
+// MustNewDir returns a new Dir with the given name and file mode. It
+// will panic if name contains a filepath separator unless name is "/".
+func MustNewDir(name string, mode os.FileMode) *Dir {
+	d, err := NewDir(name, mode)
+	if err != nil {
+		panic(err)
 	}
+	return d
 }
 
 // Own sets the uid and gid of the directory.

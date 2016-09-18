@@ -38,10 +38,10 @@ func init() {
 }
 
 var (
-	d  = NewDir
-	ro = NewRO
-	rw = NewRW
-	wo = NewWO
+	d  = MustNewDir
+	ro = MustNewRO
+	rw = MustNewRW
+	wo = MustNewWO
 )
 
 func sysfs(t *testing.T, comm chan string) *FileSystem {

@@ -49,7 +49,7 @@ var nofs *FileSystem
 func NewFileSystem(mode os.FileMode, clock func() time.Time) *FileSystem {
 	var fs FileSystem
 	fs.now = clock
-	fs.root = NewDir("/", mode)
+	fs.root, _ = NewDir("/", mode)
 	fs.root.SetSys(&fs)
 	return &fs
 }

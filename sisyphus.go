@@ -6,6 +6,7 @@
 package sisyphus
 
 import (
+	"errors"
 	"io"
 	"os"
 	"sync"
@@ -15,6 +16,10 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 )
+
+// ErrBadName is returned when a new Node is created with a base name
+// that contains a filepath separator.
+var ErrBadName = errors.New("sisyphus: base contains filepath separator")
 
 // server is a FUSE server for a FileSystem.
 type server struct {

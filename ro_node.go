@@ -7,6 +7,8 @@ package sisyphus
 import (
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -45,14 +47,27 @@ var (
 )
 
 // NewRO returns a new RO file with the given name and file mode.
-func NewRO(name string, mode os.FileMode, dev Reader) *RO {
+func NewRO(name string, mode os.FileMode, dev Reader) (*RO, error) {
+	if strings.Contains(name, string(filepath.Separator)) {
+		return nil, ErrBadName
+	}
 	return &RO{
 		name: name,
 		attr: attr{
 			mode: mode &^ (os.ModeDir | 0222),
 		},
 		dev: dev,
+	}, nil
+}
+
+// MustNewRO returns a new RO with the given name and file mode. It
+// will panic if name contains a filepath separator.
+func MustNewRO(name string, mode os.FileMode, dev Reader) *RO {
+	ro, err := NewRO(name, mode, dev)
+	if err != nil {
+		panic(err)
 	}
+	return ro
 }
 
 // Own sets the uid and gid of the file.

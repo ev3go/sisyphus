@@ -7,6 +7,8 @@ package sisyphus
 import (
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -50,14 +52,27 @@ var (
 )
 
 // NewRW returns a new RW file with the given name and file mode.
-func NewRW(name string, mode os.FileMode, dev ReadWriter) *RW {
+func NewRW(name string, mode os.FileMode, dev ReadWriter) (*RW, error) {
+	if strings.Contains(name, string(filepath.Separator)) {
+		return nil, ErrBadName
+	}
 	return &RW{
 		name: name,
 		attr: attr{
 			mode: mode &^ os.ModeDir,
 		},
 		dev: dev,
+	}, nil
+}
+
+// MustNewRW returns a new RW with the given name and file mode. It
+// will panic if name contains a filepath separator.
+func MustNewRW(name string, mode os.FileMode, dev ReadWriter) *RW {
+	rw, err := NewRW(name, mode, dev)
+	if err != nil {
+		panic(err)
 	}
+	return rw
 }
 
 // Own sets the uid and gid of the file.
