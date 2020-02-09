@@ -2,8 +2,8 @@ sudo: required
 
 language: go
 go:
-  - 1.11.x
   - 1.12.x
+  - 1.13.x
   
 env:
   - GO111MODULE=on
@@ -13,7 +13,7 @@ install:
   - sudo apt-get install -qq fuse
 
 script:
-  - go build -x -v ./...
-  - go test -a -x -v ./...
+  - go build -v ./...
+  - go test -a -v ./...
   - diff <(gofmt -d .) <("")
   - if [[ $TRAVIS_SECURE_ENV_VARS = "true" ]]; then bash .travis/test-coverage.sh; fi
