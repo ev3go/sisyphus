@@ -114,7 +114,7 @@ func (fs *FileSystem) Bind(dir string, n Node) error {
 
 func (fs *FileSystem) bind(dir string, n Node) error {
 	dir = filepath.Clean(dir)
-	d, err := walkPath(fs.root, "open", dir)
+	f, err := walkPath(fs.root, "open", dir)
 	if os.IsNotExist(err) {
 		return &os.PathError{
 			Op:   "open",
@@ -122,8 +122,12 @@ func (fs *FileSystem) bind(dir string, n Node) error {
 			Err:  syscall.ENOENT,
 		}
 	}
-	d.(*Dir).files[n.Name()] = n
-	fs.sync(d)
+
+	d := f.(*Dir)
+	d.mu.Lock()
+	d.files[n.Name()] = n
+	d.mu.Unlock()
+	fs.sync(f)
 
 	return nil
 }
@@ -145,6 +149,8 @@ func (fs *FileSystem) Unbind(path string) (Node, error) {
 		return nil, err
 	}
 	d := n.(*Dir)
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	node, ok := d.files[name]
 	if !ok {
 		return nil, &os.PathError{Op: "unbind", Path: path, Err: syscall.ENOENT}
