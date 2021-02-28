@@ -35,6 +35,8 @@ type WO struct {
 
 	fs *FileSystem
 
+	openFlags fuse.OpenResponseFlags
+
 	dev Writer
 }
 
@@ -51,6 +53,12 @@ var (
 
 // NewWO returns a new WO file with the given name and file mode.
 func NewWO(name string, mode os.FileMode, dev Writer) (*WO, error) {
+	return NewWOFlags(name, mode, 0, dev)
+}
+
+// NewWOFlags returns a new WO file with the given name and file mode.
+// The provided flags are used when opening the WO node.
+func NewWOFlags(name string, mode os.FileMode, flags fuse.OpenResponseFlags, dev Writer) (*WO, error) {
 	if strings.Contains(name, string(filepath.Separator)) {
 		return nil, ErrBadName
 	}
@@ -59,14 +67,22 @@ func NewWO(name string, mode os.FileMode, dev Writer) (*WO, error) {
 		attr: attr{
 			mode: mode &^ (os.ModeDir | 0444),
 		},
-		dev: dev,
+		openFlags: flags,
+		dev:       dev,
 	}, nil
 }
 
-// MustNewWO returns a new RO with the given name and file mode. It
+// MustNewWO returns a new WO with the given name and file mode. It
 // will panic if name contains a filepath separator.
 func MustNewWO(name string, mode os.FileMode, dev Writer) *WO {
-	wo, err := NewWO(name, mode, dev)
+	return MustNewWOFlags(name, mode, 0, dev)
+}
+
+// MustNewWOFlags returns a new WO with the given name and file mode. It
+// will panic if name contains a filepath separator.
+// The provided flags are used when opening the WO node.
+func MustNewWOFlags(name string, mode os.FileMode, flags fuse.OpenResponseFlags, dev Writer) *WO {
+	wo, err := NewWOFlags(name, mode, flags, dev)
 	if err != nil {
 		panic(err)
 	}
@@ -127,6 +143,7 @@ func (f *WO) Attr(ctx context.Context, a *fuse.Attr) error {
 
 // Open satisfies the bazil.org/fuse/fs.NodeOpener interface.
 func (f *WO) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	resp.Flags |= fuse.OpenDirectIO
 	return f, nil
 }
 

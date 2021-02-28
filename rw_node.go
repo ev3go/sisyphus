@@ -36,6 +36,8 @@ type RW struct {
 
 	fs *FileSystem
 
+	openFlags fuse.OpenResponseFlags
+
 	dev ReadWriter
 }
 
@@ -53,6 +55,12 @@ var (
 
 // NewRW returns a new RW file with the given name and file mode.
 func NewRW(name string, mode os.FileMode, dev ReadWriter) (*RW, error) {
+	return NewRWFlags(name, mode, 0, dev)
+}
+
+// NewRWFlags returns a new RW file with the given name and file mode.
+// The provided flags are used when opening the RW node.
+func NewRWFlags(name string, mode os.FileMode, flags fuse.OpenResponseFlags, dev ReadWriter) (*RW, error) {
 	if strings.Contains(name, string(filepath.Separator)) {
 		return nil, ErrBadName
 	}
@@ -61,14 +69,22 @@ func NewRW(name string, mode os.FileMode, dev ReadWriter) (*RW, error) {
 		attr: attr{
 			mode: mode &^ os.ModeDir,
 		},
-		dev: dev,
+		openFlags: flags,
+		dev:       dev,
 	}, nil
 }
 
 // MustNewRW returns a new RW with the given name and file mode. It
 // will panic if name contains a filepath separator.
 func MustNewRW(name string, mode os.FileMode, dev ReadWriter) *RW {
-	rw, err := NewRW(name, mode, dev)
+	return MustNewRWFlags(name, mode, 0, dev)
+}
+
+// MustNewRWFlags returns a new RW with the given name and file mode. It
+// will panic if name contains a filepath separator.
+// The provided flags are used when opening the RW node.
+func MustNewRWFlags(name string, mode os.FileMode, flags fuse.OpenResponseFlags, dev ReadWriter) *RW {
+	rw, err := NewRWFlags(name, mode, flags, dev)
 	if err != nil {
 		panic(err)
 	}
@@ -129,6 +145,7 @@ func (f *RW) Attr(ctx context.Context, a *fuse.Attr) error {
 
 // Open satisfies the bazil.org/fuse/fs.NodeOpener interface.
 func (f *RW) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	resp.Flags |= f.openFlags
 	return f, nil
 }
 
