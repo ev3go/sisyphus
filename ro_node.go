@@ -34,6 +34,8 @@ type RO struct {
 
 	fs *FileSystem
 
+	openFlags fuse.OpenResponseFlags
+
 	dev Reader
 }
 
@@ -48,6 +50,12 @@ var (
 
 // NewRO returns a new RO file with the given name and file mode.
 func NewRO(name string, mode os.FileMode, dev Reader) (*RO, error) {
+	return NewROFlags(name, mode, 0, dev)
+}
+
+// NewRO returns a new RO file with the given name and file mode.
+// The provided flags are used when opening the RO node.
+func NewROFlags(name string, mode os.FileMode, flags fuse.OpenResponseFlags, dev Reader) (*RO, error) {
 	if strings.Contains(name, string(filepath.Separator)) {
 		return nil, ErrBadName
 	}
@@ -56,14 +64,22 @@ func NewRO(name string, mode os.FileMode, dev Reader) (*RO, error) {
 		attr: attr{
 			mode: mode &^ (os.ModeDir | 0222),
 		},
-		dev: dev,
+		dev:       dev,
+		openFlags: flags,
 	}, nil
 }
 
 // MustNewRO returns a new RO with the given name and file mode. It
 // will panic if name contains a filepath separator.
 func MustNewRO(name string, mode os.FileMode, dev Reader) *RO {
-	ro, err := NewRO(name, mode, dev)
+	return MustNewROFlags(name, mode, 0, dev)
+}
+
+// MustNewRO returns a new RO with the given name and file mode. It
+// will panic if name contains a filepath separator.
+// The provided flags are used when opening the RO node.
+func MustNewROFlags(name string, mode os.FileMode, flags fuse.OpenResponseFlags, dev Reader) *RO {
+	ro, err := NewROFlags(name, mode, flags, dev)
 	if err != nil {
 		panic(err)
 	}
@@ -124,6 +140,7 @@ func (f *RO) Attr(ctx context.Context, a *fuse.Attr) error {
 
 // Open satisfies the bazil.org/fuse/fs.NodeOpener interface.
 func (f *RO) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	resp.Flags |= fuse.OpenDirectIO
 	return f, nil
 }
 
