@@ -5,6 +5,7 @@
 package sisyphus
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,8 +13,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
